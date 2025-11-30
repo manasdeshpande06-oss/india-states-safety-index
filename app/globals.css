@@ -1,0 +1,24 @@
+@import url("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* No global colors; components decide their own colors */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+}
+/* Custom tweaks for improved aesthetics */
+:root {
+  --ring-emerald: 94 57% 44%;
+}
+a {
+  text-decoration: none;
+}
+button, a {
+  transition: all 150ms ease;
+}
