@@ -1,9 +1,17 @@
 import { createClient } from '@/lib/supabase/server';
+import { allIndianStates } from '@/lib/mock/sampleData';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    let supabase;
+    try {
+      supabase = await createClient();
+    } catch (err) {
+      console.warn('Supabase not configured - returning mock states list for development');
+      const transformed = allIndianStates.map(s => ({ id: s.id, code: s.state_code, name: s.state_name }));
+      return NextResponse.json({ data: transformed, total: transformed.length });
+    }
     
     // Get all states
     const { data: states, error } = await supabase

@@ -16,11 +16,12 @@ interface TrendChartProps {
 }
 
 const TrendChart: React.FC<TrendChartProps> = ({ data, label = "Safety %" }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const chartRef = useRef<Chart | null>(null);
+  const canvasRef = useRef(null as HTMLCanvasElement | null);
+  const chartRef = useRef(null as any);
 
   useEffect(() => {
     if (!canvasRef.current) return;
+    if (!Array.isArray(data) || data.length === 0) return; // nothing to render
 
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
@@ -36,7 +37,7 @@ const TrendChart: React.FC<TrendChartProps> = ({ data, label = "Safety %" }) => 
         labels: data.map(d => d.year),
         datasets: [{
           label: label,
-          data: data.map(d => d.value),
+          data: data.map(d => (typeof d.value === 'number' ? d.value : 0)),
           borderColor: '#1a9850',
           backgroundColor: 'rgba(26, 169, 80, 0.1)',
           borderWidth: 3,
@@ -58,7 +59,11 @@ const TrendChart: React.FC<TrendChartProps> = ({ data, label = "Safety %" }) => 
           },
           tooltip: {
             callbacks: {
-              label: (context) => `${context.parsed.y}%`
+              label: (context: any) => {
+                const parsed = (context?.parsed as any) || {};
+                const y = parsed.y ?? parsed[0] ?? 0;
+                return `${y}%`;
+              }
             }
           }
         },
@@ -68,7 +73,7 @@ const TrendChart: React.FC<TrendChartProps> = ({ data, label = "Safety %" }) => 
             min: 40,
             max: 100,
             ticks: {
-              callback: (value) => `${value}%`
+              callback: (value: any) => `${value}%`
             }
           }
         },
@@ -87,7 +92,7 @@ const TrendChart: React.FC<TrendChartProps> = ({ data, label = "Safety %" }) => 
   }, [data, label]);
 
   return (
-    <div className="w-full h-64">
+    <div className="w-full h-64 card-hover animate-fade-in-up" role="img" aria-label="Trend chart showing history">
       <canvas ref={canvasRef} />
     </div>
   );

@@ -1,9 +1,27 @@
 import { createClient } from '@/lib/supabase/server';
+import { allIndianStates } from '@/lib/mock/sampleData';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    let supabase;
+    try {
+      // createClient will throw if env vars are missing
+      supabase = await createClient();
+    } catch (err) {
+      console.warn('Supabase not configured - returning mock safety data for development');
+      const transformedData = allIndianStates.map(s => ({
+        id: s.id,
+        state_code: s.state_code,
+        state_name: s.state_name,
+        safety_percentage: s.safety_percentage,
+        metrics: s.metrics,
+        data_source_url: s.data_source_url,
+        recorded_at: s.recorded_at
+      }));
+
+      return NextResponse.json({ data: transformedData, total: transformedData.length });
+    }
     
     // Get latest safety metrics for all states
     const { data: metrics, error } = await supabase

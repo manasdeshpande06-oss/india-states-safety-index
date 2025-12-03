@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { findStateByCode, allIndianStates } from '@/lib/mock/sampleData';
 import { NextResponse } from 'next/server';
 
 export async function GET(
@@ -7,7 +8,29 @@ export async function GET(
 ) {
   try {
     const { state_code } = params;
-    const supabase = await createClient();
+    let supabase;
+    try {
+      supabase = await createClient();
+    } catch (err) {
+      console.warn('Supabase not configured - returning mock state details for development');
+      const s = findStateByCode(state_code);
+      if (!s) return NextResponse.json({ error: 'State not found' }, { status: 404 });
+
+      const transformedData = {
+        state: { id: s.id, code: s.state_code, name: s.state_name },
+        safety_percentage: s.safety_percentage,
+        metrics: s.metrics,
+        data_source_url: s.data_source_url,
+        recorded_at: s.recorded_at,
+        trend: [
+          { year: 2020, value: Math.max(40, s.safety_percentage - 4) },
+          { year: 2021, value: Math.max(45, s.safety_percentage - 2) },
+          { year: 2022, value: s.safety_percentage }
+        ]
+      };
+
+      return NextResponse.json({ data: transformedData });
+    }
     
     // Get state by code
     const { data: state, error: stateError } = await supabase

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useRef } from 'react';
 import { Chart, RadarController, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend } from 'chart.js';
@@ -11,15 +11,19 @@ interface StateMetrics {
 }
 
 interface RadarChartProps {
-  states: StateMetrics[];
+  // multi-state comparison
+  states?: StateMetrics[];
+  // single dataset mode (per-state details)
+  data?: number[];
+  labels?: string[];
 }
 
-const RadarChart: React.FC<RadarChartProps> = ({ states }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const chartRef = useRef<Chart | null>(null);
+const RadarChart: React.FC<RadarChartProps> = ({ states, data, labels }) => {
+  const canvasRef = useRef(null as HTMLCanvasElement | null);
+  const chartRef = useRef(null as any);
 
   useEffect(() => {
-    if (!canvasRef.current || states.length === 0) return;
+    if (!canvasRef.current) return;
 
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
@@ -29,32 +33,61 @@ const RadarChart: React.FC<RadarChartProps> = ({ states }) => {
       chartRef.current.destroy();
     }
 
-    // Get all metric keys from the first state
-    const metricKeys = Object.keys(states[0].metrics);
+      // (metricKeys will be computed later depending on the input shape)
+
+      // single declaration of color arrays for dataset styling
+      const colors = ['#1a9850', '#d73027', '#fee08b', '#4575b4'];
+      const backgroundColors = [
+        'rgba(26, 169, 80, 0.2)',
+        'rgba(215, 48, 39, 0.2)',
+        'rgba(254, 224, 139, 0.2)',
+        'rgba(69, 117, 180, 0.2)'
+      ];
+
+    // Support either `states` (array of metrics) or single `data`+`labels` mode.
+    let chartLabels: string[] = [];
+    let datasets: any[] = [];
+
+    if (Array.isArray(states) && states.length > 0) {
+      const metricKeys = Object.keys(states[0]?.metrics ?? {});
+      if (metricKeys.length === 0) return;
+      chartLabels = metricKeys.map(k => k.charAt(0).toUpperCase() + k.slice(1));
+      datasets = states.map((state, index) => ({
+        label: state.name,
+        data: metricKeys.map(key => state.metrics?.[key] ?? 0),
+        borderColor: colors[index % colors.length],
+        backgroundColor: backgroundColors[index % backgroundColors.length],
+        borderWidth: 2,
+        pointBackgroundColor: colors[index % colors.length],
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: colors[index % colors.length]
+      }));
+    } else if (Array.isArray(data) && Array.isArray(labels) && data.length > 0 && labels.length === data.length) {
+      chartLabels = labels;
+      datasets = [{
+        label: 'Metrics',
+        data: data.map(v => (typeof v === 'number' ? v : 0)),
+        borderColor: colors[0],
+        backgroundColor: backgroundColors[0],
+        borderWidth: 2,
+        pointBackgroundColor: colors[0],
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: colors[0]
+      }];
+    } else {
+      return; // nothing usable to render
+    }
     
-    const colors = ['#1a9850', '#d73027', '#fee08b', '#4575b4'];
-    const backgroundColors = [
-      'rgba(26, 169, 80, 0.2)',
-      'rgba(215, 48, 39, 0.2)',
-      'rgba(254, 224, 139, 0.2)',
-      'rgba(69, 117, 180, 0.2)'
-    ];
+    // single declaration of color arrays for dataset styling
+    // (these are intentionally defined once to avoid redeclaration errors)
 
     chartRef.current = new Chart(ctx, {
       type: 'radar',
-      data: {
-        labels: metricKeys.map(key => key.charAt(0).toUpperCase() + key.slice(1)),
-        datasets: states.map((state, index) => ({
-          label: state.name,
-          data: metricKeys.map(key => state.metrics[key]),
-          borderColor: colors[index % colors.length],
-          backgroundColor: backgroundColors[index % backgroundColors.length],
-          borderWidth: 2,
-          pointBackgroundColor: colors[index % colors.length],
-          pointBorderColor: '#fff',
-          pointHoverBackgroundColor: '#fff',
-          pointHoverBorderColor: colors[index % colors.length],
-        }))
+        data: {
+        labels: chartLabels,
+        datasets
       },
       options: {
         responsive: true,
@@ -65,7 +98,12 @@ const RadarChart: React.FC<RadarChartProps> = ({ states }) => {
           },
           tooltip: {
             callbacks: {
-              label: (context) => `${context.dataset.label}: ${context.parsed.r}%`
+              label: (context: any) => {
+                const parsed = (context?.parsed as any) || {};
+                const r = parsed.r ?? parsed[0] ?? 0;
+                const label = context?.dataset?.label ?? '';
+                return `${label}: ${r}%`;
+              }
             }
           }
         },
@@ -78,7 +116,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ states }) => {
             pointLabels: { color: '#334155' },
             ticks: {
               stepSize: 20,
-              callback: (value) => `${value}%`
+              callback: (value: any) => `${value}%`
             }
           }
         },
@@ -94,7 +132,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ states }) => {
         chartRef.current.destroy();
       }
     };
-  }, [states]);
+  }, [states, data, labels]);
 
   return (
     <div className="w-full h-96">

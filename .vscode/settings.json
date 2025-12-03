@@ -1,0 +1,8 @@
+{
+  // Turn off built-in CSS/SCSS validation so the editor doesn't flag Tailwind at-rules
+  "css.validate": false,
+  "scss.validate": false,
+  "less.validate": false,
+  // Recommended: use stylelint extension for Tailwind-aware linting if desired
+  "stylelint.enable": true
+}

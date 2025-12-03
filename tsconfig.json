@@ -22,6 +22,17 @@
         "name": "next"
       }
     ],
+    // Limit automatic type library inclusion to known items so TS doesn't try to load
+    // unexpected ambient type packages (this reduces "Cannot find type definition file" IDE errors).
+    // Use local typeRoots first so the editor/TS server doesn't attempt to
+    // resolve missing ambient packages in the environment. Local shims live
+    // under `types/*` and provide small fallbacks for dev/editor diagnostics.
+    "typeRoots": [
+      "./node_modules/@types",
+      "./types"
+    ],
+    "types": ["node"],
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"

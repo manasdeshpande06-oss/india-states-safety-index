@@ -15,11 +15,12 @@ interface MetricsBarChartProps {
 }
 
 const MetricsBarChart: React.FC<MetricsBarChartProps> = ({ metrics }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const chartRef = useRef<Chart | null>(null);
+  const canvasRef = useRef(null as HTMLCanvasElement | null);
+  const chartRef = useRef(null as any);
 
   useEffect(() => {
     if (!canvasRef.current) return;
+    if (!Array.isArray(metrics) || metrics.length === 0) return;
 
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
@@ -40,7 +41,7 @@ const MetricsBarChart: React.FC<MetricsBarChartProps> = ({ metrics }) => {
       data: {
         labels: metrics.map(m => m.label),
         datasets: [{
-          data: metrics.map(m => m.value),
+          data: metrics.map(m => (typeof m.value === 'number' ? m.value : 0)),
           backgroundColor: metrics.map(m => getBackgroundColor(m.value)),
           borderWidth: 0,
           borderRadius: 4,
@@ -57,7 +58,11 @@ const MetricsBarChart: React.FC<MetricsBarChartProps> = ({ metrics }) => {
           },
           tooltip: {
             callbacks: {
-              label: (context) => `${context.parsed.x}%`
+              label: (context: any) => {
+                const parsed = (context?.parsed as any) || {};
+                const x = parsed.x ?? parsed[0] ?? 0;
+                return `${x}%`;
+              }
             }
           }
         },
@@ -67,7 +72,7 @@ const MetricsBarChart: React.FC<MetricsBarChartProps> = ({ metrics }) => {
             max: 100,
             grid: { color: '#e5e7eb' },
             ticks: {
-              callback: (value) => `${value}%`
+              callback: (value: any) => `${value}%`
             }
           }
         },
@@ -90,7 +95,7 @@ const MetricsBarChart: React.FC<MetricsBarChartProps> = ({ metrics }) => {
   }, [metrics]);
 
   return (
-    <div className="w-full h-80">
+    <div className="w-full h-80 card-hover animate-fade-in-up" role="img" aria-label="Metrics bar chart showing metric values">
       <canvas ref={canvasRef} />
     </div>
   );

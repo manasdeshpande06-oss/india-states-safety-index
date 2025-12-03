@@ -11,11 +11,14 @@ interface GaugeChartProps {
 }
 
 const GaugeChart: React.FC<GaugeChartProps> = ({ value, label = "Safety" }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const chartRef = useRef<Chart | null>(null);
+  const canvasRef = useRef(null as HTMLCanvasElement | null);
+  const chartRef = useRef(null as any);
 
   useEffect(() => {
     if (!canvasRef.current) return;
+
+    // coerce value to a valid 0-100 number
+    const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
 
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
@@ -35,8 +38,8 @@ const GaugeChart: React.FC<GaugeChartProps> = ({ value, label = "Safety" }) => {
       type: 'doughnut',
       data: {
         datasets: [{
-          data: [value, 100 - value],
-          backgroundColor: [getColor(value), '#e5e7eb'],
+          data: [safeValue, 100 - safeValue],
+          backgroundColor: [getColor(safeValue), '#e5e7eb'],
           borderWidth: 0,
           hoverBackgroundColor: [ '#10b981', '#d1d5db' ],
         }]
@@ -72,7 +75,7 @@ const GaugeChart: React.FC<GaugeChartProps> = ({ value, label = "Safety" }) => {
   }, [value]);
 
   return (
-    <div className="relative w-56 h-28 group">
+    <div className="relative w-56 h-28 group card-hover animate-fade-in-up" role="img" aria-label={`${label} chart showing ${value}%`}>
       <canvas ref={canvasRef} className="absolute inset-0" />
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center transition-transform duration-300 group-hover:scale-105">

@@ -6,12 +6,12 @@ import { safetyService } from "@/lib/services/safetyService";
 import type { CompareData, State } from "@/lib/services/safetyService";
 
 export default function ComparePage() {
-  const [allStates, setAllStates] = useState<State[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [loadingStates, setLoadingStates] = useState<boolean>(true);
-  const [loadingCompare, setLoadingCompare] = useState<boolean>(false);
+  const [allStates, setAllStates] = useState([] as State[]);
+  const [selected, setSelected] = useState([] as string[]);
+  const [loadingStates, setLoadingStates] = useState(true);
+  const [loadingCompare, setLoadingCompare] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [compareData, setCompareData] = useState<CompareData[]>([]);
+  const [compareData, setCompareData] = useState([] as CompareData[]);
 
   useEffect(() => {
     const loadStates = async () => {
@@ -25,15 +25,23 @@ export default function ComparePage() {
       }
     };
     loadStates();
+    // check server status to detect mock mode
+    fetch('/api/_status').then(r => r.json()).then(j => {
+      if (j && j.usingSupabase === false) {
+        setError('Running in demo/mock mode — Supabase not configured. Using sample data.');
+      }
+    }).catch(() => {
+      setError('Unable to check server status (continuing with sample data).');
+    });
   }, []);
 
   const canAddMore = selected.length < 4;
   const disabledCodes = useMemo(() => new Set(selected), [selected]);
 
   const toggleSelect = (code: string) => {
-    setSelected((prev) => {
+    setSelected((prev: string[]) => {
       if (prev.includes(code)) {
-        return prev.filter((c) => c !== code);
+        return prev.filter((c: string) => c !== code);
       }
       if (prev.length >= 4) return prev;
       return [...prev, code];
@@ -62,7 +70,7 @@ export default function ComparePage() {
   const sampleStates = useMemo(
     () =>
       compareData.length > 0
-        ? compareData.map((c) => ({ name: c.name, metrics: c.metrics }))
+        ? compareData.map((c: CompareData) => ({ name: c.name, metrics: c.metrics }))
         : [
             {
               name: "Maharashtra",
@@ -117,14 +125,14 @@ export default function ComparePage() {
               className="px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-sm"
               onClick={() => {
                 if (compareData.length === 0) return;
-                const rows = compareData.map((d) => ({
+                const rows = compareData.map((d: CompareData) => ({
                   name: d.name,
                   ...d.metrics,
                   safety_percentage: d.safety_percentage,
                   state_code: d.state_code,
                 }));
                 const headers = Object.keys(rows[0] || {});
-                const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => (r as Record<string, unknown>)[h]).join(","))].join("\n");
+                const csv = [headers.join(","), ...rows.map((r: Record<string, unknown>) => headers.map((h) => (r as Record<string, unknown>)[h]).join(","))].join("\n");
                 const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
@@ -151,8 +159,8 @@ export default function ComparePage() {
               ) : (
                 allStates
                   .slice()
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((s) => {
+                  .sort((a: State, b: State) => a.name.localeCompare(b.name))
+                  .map((s: State) => {
                     const isSelected = disabledCodes.has(s.code);
                     const isDisabled = !isSelected && !canAddMore;
                     return (

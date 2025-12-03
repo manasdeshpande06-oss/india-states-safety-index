@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { safetyService } from '@/lib/services/safetyService';
+import Tooltip from './components/Tooltip';
 import type { SafetyData } from '@/lib/services/safetyService';
 
 // Dynamically import IndiaMap with SSR disabled
@@ -56,10 +57,11 @@ const allIndianStates: SafetyData[] = [
 ];
 
 export default function Home() {
-  const [states, setStates] = useState<SafetyData[]>([]);
+  const [states, setStates] = useState([] as SafetyData[]);
   const [loading, setLoading] = useState(true);
-  const [sortKey, setSortKey] = useState<'name' | 'safety'>('name');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortKey, setSortKey] = useState('name' as 'name' | 'safety');
+  const [sortDir, setSortDir] = useState('asc' as 'asc' | 'desc');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchSafetyData();
@@ -90,7 +92,12 @@ export default function Home() {
     window.location.href = `/state/${stateCode}`;
   };
 
-  const sortedStates = [...states].sort((a, b) => {
+  const filteredStates = states.filter((s) =>
+    s.state_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.state_code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sortedStates = [...filteredStates].sort((a, b) => {
     const dir = sortDir === 'asc' ? 1 : -1;
     if (sortKey === 'name') return a.state_name.localeCompare(b.state_name) * dir;
     return (a.safety_percentage - b.safety_percentage) * dir;
@@ -136,17 +143,20 @@ export default function Home() {
                 Explore safety across all {states.length} Indian states and union territories. Click a state, search, or compare to dive deeper. Colorblind-friendly choropleth and accessible charts included.
               </p>
               <div className="mt-4 md:mt-6 flex flex-wrap items-center gap-3">
-                <a href="/compare" className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg hover:-translate-y-0.5 transition">Compare States</a>
-                <a href="/about" className="px-4 py-2 rounded-md bg-white/90 text-slate-900 hover:bg-white hover:shadow-lg hover:-translate-y-0.5 transition">Methodology</a>
-                <button
-                  type="button"
-                  onClick={randomState}
-                  className="px-4 py-2 rounded-md border border-white/70 text-white hover:bg-white hover:text-slate-900 transition"
-                  aria-label="Jump to a random state"
-                  title="Feeling lucky? Jump to a random state"
-                >
-                  Surprise Me
-                </button>
+                <a href="/compare" className="btn">Compare States</a>
+                <a href="/about" className="btn-muted">Methodology</a>
+                <Tooltip text="Jump to a random state" id="surprise-me-tip">
+                  <button
+                    type="button"
+                    onClick={randomState}
+                    className="btn-muted"
+                    aria-label="Jump to a random state"
+                    title="Feeling lucky? Jump to a random state"
+                  >
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-600 mr-2 animate-float" />
+                    Surprise Me
+                  </button>
+                </Tooltip>
               </div>
             </div>
           </div>
@@ -168,15 +178,9 @@ export default function Home() {
                 id="state-search"
                 type="text"
                 placeholder="Search states..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="peer w-full rounded-lg border border-slate-300 bg-white px-4 py-2 pr-24 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                onChange={(e) => {
-                  const q = e.target.value.toLowerCase();
-                  const items = document.querySelectorAll('[data-state-card]');
-                  items.forEach((el) => {
-                    const name = (el.getAttribute('data-state-name') || '').toLowerCase();
-                    (el as HTMLElement).style.display = name.includes(q) ? '' : 'none';
-                  });
-                }}
               />
               <span className="absolute right-3 top-2.5 text-slate-400" aria-hidden="true">⌕</span>
             </div>
@@ -198,7 +202,7 @@ export default function Home() {
               <button
                 type="button"
                 className="px-3 py-1.5 rounded-md border border-slate-300 hover:bg-slate-100"
-                onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+                onClick={() => setSortDir((d: 'asc' | 'desc') => (d === 'asc' ? 'desc' : 'asc'))}
                 aria-label="Toggle sort direction"
                 title="Toggle sort direction"
               >
@@ -221,7 +225,7 @@ export default function Home() {
             <div className="relative">
               <div className="aspect-[16/9] rounded-b-xl border-t border-slate-200 overflow-hidden transition-shadow duration-300 hover:shadow-lg">
                 <IndiaMap 
-                  states={states.map(s => ({ code: s.state_code, name: s.state_name, safety: s.safety_percentage }))} 
+                  states={states.map((s: SafetyData) => ({ code: s.state_code, name: s.state_name, safety: s.safety_percentage }))} 
                   onStateClick={handleStateClick}
                 />
               </div>
@@ -235,11 +239,11 @@ export default function Home() {
                 <h3 className="text-base font-semibold">Top 10 Safest</h3>
               </div>
               <div className="p-4 grid grid-cols-1 gap-3">
-                {topSafest.map((s) => (
+                {topSafest.map((s: SafetyData) => (
                   <a
                     key={s.id}
                     href={`/state/${s.state_code}`}
-                    className="group flex items-center gap-3 rounded-lg border border-slate-200 p-3 hover:border-emerald-600 hover:shadow-md transition hover:-translate-y-0.5"
+                    className="group flex items-center gap-3 rounded-lg border border-slate-200 p-3 card-hover animate-fade-in-up scale-pop"
                     data-state-card
                     data-state-name={s.state_name}
                   >
@@ -247,7 +251,7 @@ export default function Home() {
                       alt={`${s.state_name} thumbnail`}
                       loading="lazy"
                       src={`https://picsum.photos/seed/${s.state_code}-safe/64/64`}
-                      className="w-12 h-12 rounded-md object-cover"
+                      className="w-12 h-12 rounded-md object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
@@ -266,11 +270,11 @@ export default function Home() {
                 <h3 className="text-base font-semibold">Bottom 10</h3>
               </div>
               <div className="p-4 grid grid-cols-1 gap-3">
-                {topWorst.map((s) => (
+                {topWorst.map((s: SafetyData) => (
                   <a
                     key={s.id}
                     href={`/state/${s.state_code}`}
-                    className="group flex items-center gap-3 rounded-lg border border-slate-200 p-3 hover:border-red-600 hover:shadow-md transition hover:-translate-y-0.5"
+                    className="group flex items-center gap-3 rounded-lg border border-slate-200 p-3 card-hover animate-fade-in-up scale-pop"
                     data-state-card
                     data-state-name={s.state_name}
                   >
@@ -278,7 +282,7 @@ export default function Home() {
                       alt={`${s.state_name} thumbnail`}
                       loading="lazy"
                       src={`https://picsum.photos/seed/${s.state_code}-risk/64/64`}
-                      className="w-12 h-12 rounded-md object-cover"
+                      className="w-12 h-12 rounded-md object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
@@ -301,11 +305,11 @@ export default function Home() {
               <a href="/compare" className="text-sm px-3 py-1 rounded-md bg-slate-900 text-white hover:bg-slate-700">Compare</a>
             </div>
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {sortedStates.map((s) => (
+                {sortedStates.map((s: SafetyData) => (
                 <a
                   key={s.id}
                   href={`/state/${s.state_code}`}
-                  className="group rounded-lg border border-slate-200 p-4 hover:border-emerald-600 hover:shadow-md transition hover:-translate-y-0.5"
+                    className="group rounded-lg border border-slate-200 p-4 card-hover transition"
                   data-state-card
                   data-state-name={s.state_name}
                 >
@@ -326,7 +330,12 @@ export default function Home() {
                     />
                   </div>
                   <div className="mt-2 text-sm flex items-center justify-between">
-                    <span>Safety: <span className="font-semibold">{s.safety_percentage}%</span></span>
+                    <span>
+                      Safety: 
+                      <Tooltip text={`Crime: ${s.metrics.crime} · Police: ${s.metrics.police} · Road: ${s.metrics.road}`} id={`metrics-${s.id}`}>
+                        <span className="font-semibold ml-1 cursor-help underline-offset-2 hover:underline">{s.safety_percentage}%</span>
+                      </Tooltip>
+                    </span>
                     <span className="text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">View details →</span>
                   </div>
                 </a>

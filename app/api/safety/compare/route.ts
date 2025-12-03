@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { allIndianStates } from '@/lib/mock/sampleData';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
@@ -14,7 +15,16 @@ export async function GET(request: Request) {
     }
 
     const stateCodes = codes.split(',').map(code => code.trim().toUpperCase());
-    const supabase = await createClient();
+    let supabase;
+    try {
+      supabase = await createClient();
+    } catch (err) {
+      console.warn('Supabase not configured - returning mock comparison data for development');
+      const stateCodes = codes.split(',').map(code => code.trim().toUpperCase());
+      const found = allIndianStates.filter(s => stateCodes.includes(s.state_code));
+      const transformed = found.map(s => ({ name: s.state_name, metrics: s.metrics, safety_percentage: s.safety_percentage, state_code: s.state_code }));
+      return NextResponse.json({ data: transformed, total: transformed.length });
+    }
     
     // Get states by codes
     const { data: states, error: statesError } = await supabase

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import ThemeToggle from "./components/ThemeToggle";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -41,7 +42,12 @@ export default function RootLayout({
                 <a href="/about" className="hover:text-emerald-700 transition-colors">About / Methodology</a>
                 <a href="/api-docs" className="hover:text-emerald-700 transition-colors">API Docs</a>
                 <a href="/contact" className="hover:text-emerald-700 transition-colors">Contact</a>
-                <a href="/admin" className="px-3 py-1 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">Admin</a>
+                <div className="flex items-center gap-3">
+                  <a href="/admin" className="px-3 py-1 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">Admin</a>
+                  {/* Theme toggle beside Admin in the top nav */}
+                  {/* Client component — toggles document.documentElement and localStorage */}
+                  <ThemeToggle />
+                </div>
               </div>
               <div className="md:hidden">
                 <a href="/" className="flex items-center gap-2">
