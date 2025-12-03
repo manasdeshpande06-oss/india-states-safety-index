@@ -1,10 +1,11 @@
 import StateDetailsClient from './StateDetailsClient';
 
-interface Props { params: { state_code: string } }
+interface Props { params: Promise<{ state_code: string }> }
 
-export default function Page({ params }: Props) {
-  // Server component: read params synchronously and pass to client child
-  const code = String(params.state_code);
+export default async function Page({ params }: Props) {
+  // Server component: read params asynchronously and pass to client child
+  const { state_code } = await params;
+  const code = String(state_code);
   return (
     <StateDetailsClient stateCode={code} />
   );

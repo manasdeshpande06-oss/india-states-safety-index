@@ -1,224 +1,275 @@
-"use client";
+"use client"
 
-import { useEffect, useMemo, useState } from "react";
-import RadarChart from "../components/RadarChart";
-import { safetyService } from "@/lib/services/safetyService";
-import type { CompareData, State } from "@/lib/services/safetyService";
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { ChevronDown } from "lucide-react"
 
-export default function ComparePage() {
-  const [allStates, setAllStates] = useState([] as State[]);
-  const [selected, setSelected] = useState([] as string[]);
-  const [loadingStates, setLoadingStates] = useState(true);
-  const [loadingCompare, setLoadingCompare] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [compareData, setCompareData] = useState([] as CompareData[]);
+interface ComparisonMetric {
+  label: string
+  icon: string
+}
 
-  useEffect(() => {
-    const loadStates = async () => {
-      try {
-        const { data } = await safetyService.getAllStates();
-        setAllStates(data);
-      } catch (e) {
-        setError("Failed to load states");
-      } finally {
-        setLoadingStates(false);
-      }
-    };
-    loadStates();
-    // check server status to detect mock mode
-    fetch('/api/_status').then(r => r.json()).then(j => {
-      if (j && j.usingSupabase === false) {
-        setError('Running in demo/mock mode — Supabase not configured. Using sample data.');
-      }
-    }).catch(() => {
-      setError('Unable to check server status (continuing with sample data).');
-    });
-  }, []);
+const states = [
+  "Kerala",
+  "Sikkim",
+  "Himachal Pradesh",
+  "Goa",
+  "Uttarakhand",
+  "Punjab",
+  "Haryana",
+  "Delhi",
+  "Karnataka",
+  "Tamil Nadu",
+  "Telangana",
+  "Andhra Pradesh",
+  "Gujarat",
+  "Rajasthan",
+  "Madhya Pradesh",
+]
 
-  const canAddMore = selected.length < 4;
-  const disabledCodes = useMemo(() => new Set(selected), [selected]);
+const metrics: ComparisonMetric[] = [
+  { label: "Crime Rate", icon: "📊" },
+  { label: "Education", icon: "📚" },
+  { label: "Healthcare", icon: "🏥" },
+  { label: "Women Safety", icon: "👩" },
+  { label: "Infrastructure", icon: "🏗️" },
+]
 
-  const toggleSelect = (code: string) => {
-    setSelected((prev: string[]) => {
-      if (prev.includes(code)) {
-        return prev.filter((c: string) => c !== code);
-      }
-      if (prev.length >= 4) return prev;
-      return [...prev, code];
-    });
-  };
-
-  const handleCompare = async () => {
-    if (selected.length < 2) {
-      setError("Please select at least 2 states");
-      return;
-    }
-    setError(null);
-    setLoadingCompare(true);
-    try {
-      const { data } = await safetyService.compareStates(selected);
-      setCompareData(data);
-      // Smooth scroll to chart
-      document.getElementById('radar-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } catch (e) {
-      setError("Failed to compare states");
-    } finally {
-      setLoadingCompare(false);
-    }
-  };
-
-  const sampleStates = useMemo(
-    () =>
-      compareData.length > 0
-        ? compareData.map((c: CompareData) => ({ name: c.name, metrics: c.metrics }))
-        : [
-            {
-              name: "Maharashtra",
-              metrics: {
-                crime: 62,
-                police: 70,
-                road: 66,
-                health: 72,
-                emergency: 58,
-                disaster: 64,
-                women: 60,
-              },
-            },
-            {
-              name: "Gujarat",
-              metrics: {
-                crime: 75,
-                police: 74,
-                road: 71,
-                health: 78,
-                emergency: 65,
-                disaster: 70,
-                women: 68,
-              },
-            },
-            {
-              name: "Delhi",
-              metrics: {
-                crime: 50,
-                police: 68,
-                road: 60,
-                health: 70,
-                emergency: 55,
-                disaster: 60,
-                women: 52,
-              },
-            },
-          ],
-    [compareData]
-  );
+function ComparisonMetricCard({
+  metric,
+  stateA,
+  stateB,
+  scoreA,
+  scoreB,
+}: {
+  metric: ComparisonMetric
+  stateA: string
+  stateB: string
+  scoreA: number
+  scoreB: number
+}) {
+  const maxScore = Math.max(scoreA, scoreB)
 
   return (
-    <div className="min-h-screen p-6">
-      <section className="mx-auto max-w-7xl space-y-6">
-        <div className="flex items-end justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Compare States</h1>
-            <p className="text-slate-600">Select 2–4 states to compare metrics side-by-side.</p>
+    <motion.div
+      layout
+      className="p-4 rounded-lg border border-slate-200 bg-white hover:border-emerald-600/50 transition-colors"
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-xl">{metric.icon}</span>
+        <h4 className="font-semibold text-slate-900">{metric.label}</h4>
+      </div>
+
+      <div className="space-y-3">
+        {/* State A */}
+        <div>
+          <div className="flex justify-between mb-2">
+            <span className="text-sm font-medium text-slate-900">{stateA}</span>
+            <span className="text-sm font-bold text-emerald-700">{scoreA}%</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              className="px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-sm"
-              onClick={() => {
-                if (compareData.length === 0) return;
-                const rows = compareData.map((d: CompareData) => ({
-                  name: d.name,
-                  ...d.metrics,
-                  safety_percentage: d.safety_percentage,
-                  state_code: d.state_code,
-                }));
-                const headers = Object.keys(rows[0] || {});
-                const csv = [headers.join(","), ...rows.map((r: Record<string, unknown>) => headers.map((h) => (r as Record<string, unknown>)[h]).join(","))].join("\n");
-                const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = "state_comparison.csv";
-                link.click();
-                URL.revokeObjectURL(url);
-              }}
+          <motion.div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${scoreA}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="h-full bg-emerald-600 rounded-full"
+            />
+          </motion.div>
+        </div>
+
+        {/* State B */}
+        <div>
+          <div className="flex justify-between mb-2">
+            <span className="text-sm font-medium text-slate-900">{stateB}</span>
+            <span className="text-sm font-bold text-blue-700">{scoreB}%</span>
+          </div>
+          <motion.div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${scoreB}%` }}
+              transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
+              className="h-full bg-blue-600 rounded-full"
+            />
+          </motion.div>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+export default function ComparePanel() {
+  const [stateA, setStateA] = useState("Kerala")
+  const [stateB, setStateB] = useState("Bihar")
+  const [isOpenA, setIsOpenA] = useState(false)
+  const [isOpenB, setIsOpenB] = useState(false)
+
+  // Simulated comparison scores
+  const getScores = (state: string) => {
+    const scoreMap: Record<string, number[]> = {
+      Kerala: [85, 92, 88, 95, 82],
+      Sikkim: [88, 89, 85, 92, 80],
+      Bihar: [32, 28, 35, 25, 30],
+      "Uttar Pradesh": [38, 35, 40, 30, 38],
+      "Himachal Pradesh": [82, 88, 85, 90, 78],
+    }
+    return scoreMap[state] || [65, 70, 65, 75, 60]
+  }
+
+  const scoresA = getScores(stateA)
+  const scoresB = getScores(stateB)
+
+  return (
+    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-50">
+      <div className="mx-auto max-w-7xl">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mb-16"
+        >
+          <h2 className="text-4xl font-bold text-slate-900 mb-4">Compare States</h2>
+          <p className="text-lg text-slate-600">Analyze safety metrics side-by-side to make informed decisions</p>
+        </motion.div>
+
+        {/* State Selectors */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+          {/* State A Selector */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="relative"
+          >
+            <label className="block text-sm font-semibold text-slate-900 mb-2">State A</label>
+            <motion.button
+              onClick={() => setIsOpenA(!isOpenA)}
+              className="w-full flex items-center justify-between p-4 rounded-lg border border-slate-200 bg-white hover:border-emerald-600/50 transition-colors"
             >
-              Export CSV
-            </button>
-          </div>
-        </div>
+              <span className="font-medium text-slate-900">{stateA}</span>
+              <motion.div animate={{ rotate: isOpenA ? 180 : 0 }}>
+                <ChevronDown className="h-5 w-5" />
+              </motion.div>
+            </motion.button>
 
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-6">
-          <div className="mb-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold">Select States</h3>
-              <div className="text-xs text-slate-600">Selected: {selected.length} / 4</div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              {loadingStates ? (
-                <div className="col-span-full text-slate-600">Loading states...</div>
-              ) : (
-                allStates
-                  .slice()
-                  .sort((a: State, b: State) => a.name.localeCompare(b.name))
-                  .map((s: State) => {
-                    const isSelected = disabledCodes.has(s.code);
-                    const isDisabled = !isSelected && !canAddMore;
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        className={`text-left px-3 py-2 rounded-md border text-sm transition group ${
-                          isSelected
-                            ? "border-emerald-600 bg-emerald-50 text-emerald-800"
-                            : "border-slate-200 bg-white hover:border-emerald-600 hover:bg-emerald-50/40 hover:shadow-sm"
-                        } ${isDisabled ? "opacity-50 cursor-not-allowed" : "hover:-translate-y-0.5"}`}
-                        onClick={() => toggleSelect(s.code)}
-                        disabled={isDisabled}
-                        aria-pressed={isSelected}
-                        aria-label={`Select ${s.name}`}
-                        title={s.name}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate group-hover:text-emerald-700">{s.name}</span>
-                          <span className="text-xs text-slate-500">{s.code}</span>
-                        </div>
-                      </button>
-                    );
-                  })
-              )}
-            </div>
-            <div className="mt-4 flex items-center gap-2">
-              <button
-                onClick={handleCompare}
-                className="px-3 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-md hover:-translate-y-0.5 transition text-sm disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none"
-                disabled={selected.length < 2 || loadingCompare}
-              >
-                {loadingCompare ? "Comparing..." : "Compare"}
-              </button>
-              {selected.length > 0 && (
-                <button
-                  onClick={() => {
-                    setSelected([]);
-                    setCompareData([]);
-                    setError(null);
-                  }}
-                  className="px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-sm"
+            <AnimatePresence>
+              {isOpenA && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-full left-0 right-0 mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg z-10"
                 >
-                  Clear
-                </button>
+                  {states.map((state) => (
+                    <motion.button
+                      key={state}
+                      whileHover={{ backgroundColor: "rgba(16, 185, 129, 0.1)" }}
+                      onClick={() => {
+                        setStateA(state)
+                        setIsOpenA(false)
+                      }}
+                      className="w-full px-4 py-3 text-left text-slate-900 hover:text-emerald-700 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                    >
+                      {state}
+                    </motion.button>
+                  ))}
+                </motion.div>
               )}
-              {error && <div className="text-sm text-red-700">{error}</div>}
-            </div>
-          </div>
+            </AnimatePresence>
+          </motion.div>
 
-          <div id="radar-section" className="mt-6">
-            <h3 className="text-base font-semibold mb-2">Radar Chart Comparison</h3>
-            <div className="rounded-lg border border-slate-200 bg-white p-4 hover:shadow-md hover:-translate-y-0.5 transition">
-              <RadarChart states={sampleStates} />
+          {/* State B Selector */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="relative"
+          >
+            <label className="block text-sm font-semibold text-slate-900 mb-2">State B</label>
+            <motion.button
+              onClick={() => setIsOpenB(!isOpenB)}
+              className="w-full flex items-center justify-between p-4 rounded-lg border border-slate-200 bg-white hover:border-blue-600/50 transition-colors"
+            >
+              <span className="font-medium text-slate-900">{stateB}</span>
+              <motion.div animate={{ rotate: isOpenB ? 180 : 0 }}>
+                <ChevronDown className="h-5 w-5" />
+              </motion.div>
+            </motion.button>
+
+            <AnimatePresence>
+              {isOpenB && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-full left-0 right-0 mt-2 max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg z-10"
+                >
+                  {states.map((state) => (
+                    <motion.button
+                      key={state}
+                      whileHover={{ backgroundColor: "rgba(30, 64, 175, 0.1)" }}
+                      onClick={() => {
+                        setStateB(state)
+                        setIsOpenB(false)
+                      }}
+                      className="w-full px-4 py-3 text-left text-slate-900 hover:text-blue-700 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                    >
+                      {state}
+                    </motion.button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </div>
+
+        {/* Comparison Metrics */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
+          {metrics.map((metric, idx) => (
+            <ComparisonMetricCard
+              key={metric.label}
+              metric={metric}
+              stateA={stateA}
+              stateB={stateB}
+              scoreA={scoresA[idx]}
+              scoreB={scoresB[idx]}
+            />
+          ))}
+        </motion.div>
+
+        {/* Radar Chart Placeholder */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mt-12 p-8 rounded-xl border border-slate-200 bg-white"
+        >
+          <h3 className="text-2xl font-bold text-slate-900 mb-6">Multi-Metric Comparison</h3>
+          <div
+            data-chart="radar"
+            className="flex items-center justify-center h-96 bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg"
+          >
+            <div className="text-center">
+              <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 mb-4">
+                📊
+              </div>
+              <p className="text-slate-600 font-medium">Radar chart visualization will render here</p>
+              <p className="text-sm text-slate-500 mt-1">
+                Comparing {stateA} vs {stateB}
+              </p>
             </div>
           </div>
-        </div>
-      </section>
-    </div>
-  );
+        </motion.div>
+      </div>
+    </section>
+  )
 }

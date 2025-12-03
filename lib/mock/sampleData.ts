@@ -41,5 +41,22 @@ export const allIndianStates: SafetyData[] = [
 ];
 
 export function findStateByCode(code: string) {
-  return allIndianStates.find(s => s.state_code.toUpperCase() === code.toUpperCase()) || null;
+  if (!code) return null;
+  const q = String(code).trim();
+  // Normalize input (handle slugs, dashes, underscores, extra whitespace)
+  const normalized = q.toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // Try code match first (e.g. 'KL', 'MH')
+  const codeMatch = allIndianStates.find(s => s.state_code.toLowerCase() === normalized.toLowerCase() || s.state_code.toLowerCase() === q.toLowerCase());
+  if (codeMatch) return codeMatch;
+
+  // Exact name match (case-insensitive)
+  const nameMatch = allIndianStates.find(s => s.state_name.toLowerCase() === normalized || s.state_name.toLowerCase() === q.toLowerCase());
+  if (nameMatch) return nameMatch;
+
+  // Fallback: contains or startsWith match for slugs (e.g., 'andaman', 'nicobar')
+  const partial = allIndianStates.find(s => s.state_name.toLowerCase().includes(normalized) || normalized.includes(s.state_name.toLowerCase()));
+  if (partial) return partial;
+
+  return null;
 }
